@@ -1,5 +1,5 @@
 # 希沃窥屏检测器
-众所周知，希沃管家可以让老师偷看你在干什么，为了防止摸鱼被老师发现的悲剧，我、[Bedrock510K](https://github.com/Bedrock510K)和[DeepSeek](deepseek.com)完成了这个程序。在我们之前，已经有由[DengHanxu](https://github.com/DengHanxu)大佬开发出了[SeewoMonitorSystem](https://github.com/DengHanxu/SeewoMonitorSystem?tab=readme-ov-file#seewomonitorsystem)。不过该项目已经略微过时，所以我们才开发了这个项目~~明明是直接开写没查搜索引擎做出来的轮子~~
+众所周知，希沃管家可以让老师偷看你在干什么，为了防止摸鱼被老师发现的悲剧，我、[Bedrock510K](https://github.com/Bedrock510K)和[DeepSeek](deepseek.com)完成了这个程序。在我们之前，已经有由[DengHanxu](https://github.com/DengHanxu)大佬开发出的[SeewoMonitorSystem](https://github.com/DengHanxu/SeewoMonitorSystem?tab=readme-ov-file#seewomonitorsystem)。不过该项目已经略微过时，所以我们才开发了这个项目~~明明是直接开写没查搜索引擎做出来的轮子~~
 # 功能介绍
 📢 弹窗提醒：在老师监视你屏幕的时候弹出提示弹窗，弹窗显示的时间可以在更多设置中修改，默认3秒。当提示“screenCapture.exe已启动”时，代表老师正在观察你的屏幕，同时程序创建的托盘图标中心会变成黄色。当提示“rtcRemoteDesktop.exe已启动”时，说明你已经被老师远程控制，此时程序的托盘图标会显示红色\
 🔝 弹窗置顶：设置“弹窗提醒”功能的弹窗是否置顶显示\
