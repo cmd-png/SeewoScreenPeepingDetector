@@ -11,43 +11,16 @@ def show_message(title, message, is_error=False):
     (messagebox.showerror if is_error else messagebox.showinfo)(title, message)
     root.destroy()
 
-def create_progress_window(package_count):
-    """创建进度窗口"""
-    root = Tk()
-    root.title("安装依赖")
-    root.geometry("400x150")
-    root.resizable(False, False)
-    
-    # 计算居中位置
-    screen_width = root.winfo_screenwidth()
-    screen_height = root.winfo_screenheight()
-    x = (screen_width - 400) // 2
-    y = (screen_height - 150) // 2
-    root.geometry(f"+{x}+{y}")
-    
-    progress_label = ttk.Label(root, text="准备安装依赖...")
-    progress_label.pack(pady=5)
-    
-    progress_bar = ttk.Progressbar(root, orient="horizontal", 
-                                 length=300, mode="determinate")
-    progress_bar.pack(pady=10)
-    
-    detail_label = ttk.Label(root, text="")
-    detail_label.pack(pady=5)
-    
-    current_pkg_label = ttk.Label(root, text="")
-    current_pkg_label.pack(pady=5)
-    
-    return root, progress_bar, progress_label, detail_label, current_pkg_label
-
 def check_dependencies():
     """前置依赖检查"""
     required = {'psutil': 'psutil', 'keyboard': 'keyboard', 'PIL': 'pillow', 'pystray': 'pystray'}
     missing = []
     
     for lib, pkg in required.items():
-        try: __import__(lib)
-        except ImportError: missing.append(pkg)
+        try: 
+            __import__(lib)
+        except ImportError: 
+            missing.append(pkg)
     
     if not missing:
         return
@@ -55,10 +28,23 @@ def check_dependencies():
     # 显示初始提示
     show_message("依赖安装", f"检测到缺少依赖库：{', '.join(missing)}\n点击确定开始自动安装...")
     
-    # 创建主窗口和进度组件
+    # 创建进度窗口并置顶
     progress_root = Tk()
     progress_root.title("安装依赖")
     progress_root.geometry("400x150")
+    progress_root.resizable(False, False)
+    
+    # 计算居中位置
+    screen_width = progress_root.winfo_screenwidth()
+    screen_height = progress_root.winfo_screenheight()
+    x = (screen_width - 400) // 2
+    y = (screen_height - 150) // 2
+    progress_root.geometry(f"+{x}+{y}")
+    
+    # 确保窗口始终在最前面
+    progress_root.attributes('-topmost', True)
+    progress_root.lift()
+    progress_root.focus_force()
     
     progress_label = ttk.Label(progress_root, text="准备安装依赖...")
     progress_label.pack(pady=5)
@@ -73,18 +59,22 @@ def check_dependencies():
     current_pkg_label = ttk.Label(progress_root, text="")
     current_pkg_label.pack(pady=5)
     
-    # 共享状态变量
+    # 安装状态
     install_complete = False
     failed_packages = []
-    check_again = False
     
     def update_progress(current, total, package, message):
+        """更新进度显示"""
         progress_bar['value'] = (current / total) * 100
         progress_label.config(text=f"进度: {current}/{total}")
         current_pkg_label.config(text=f"正在安装: {package}")
         detail_label.config(text=message)
+        # 强制更新UI
+        progress_root.update_idletasks()
     
     def on_closing():
+        """处理窗口关闭事件"""
+        nonlocal install_complete
         if not install_complete:
             if messagebox.askokcancel("退出", "依赖安装尚未完成，确定要退出吗？"):
                 progress_root.destroy()
@@ -95,13 +85,16 @@ def check_dependencies():
     progress_root.protocol("WM_DELETE_WINDOW", on_closing)
     
     def install_dependencies():
-        nonlocal install_complete, failed_packages, check_again
+        """安装缺失的依赖"""
+        nonlocal install_complete, failed_packages
         total = len(missing)
         
         for i, package in enumerate(missing, 1):
-            progress_root.after(0, lambda: update_progress(i-1, total, package, "准备安装..."))
+            # 更新UI
+            progress_root.after(0, update_progress, i-1, total, package, "准备安装...")
             
             try:
+                # 运行pip安装命令
                 result = subprocess.run(
                     [sys.executable, '-m', 'pip', 'install', package],
                     capture_output=True,
@@ -109,58 +102,58 @@ def check_dependencies():
                     check=True
                 )
                 
+                # 解析输出信息
                 output = result.stdout
-                if "Downloading" in output:
-                    progress_root.after(0, lambda: update_progress(i-1, total, package, output.strip()))
-                elif "Installing" in output:
-                    progress_root.after(0, lambda: update_progress(i-1, total, package, output.strip()))
+                status_message = ""
+                if "Successfully installed" in output:
+                    status_message = f"{package} 安装成功"
+                elif "Already satisfied" in output:
+                    status_message = f"{package} 已安装"
+                else:
+                    status_message = output.strip()[:100] + "..." if len(output) > 100 else output.strip()
                 
-                progress_root.after(0, lambda: update_progress(i, total, package, f"{package} 安装成功"))
+                # 更新UI
+                progress_root.after(0, update_progress, i, total, package, status_message)
                 
             except subprocess.CalledProcessError as e:
-                progress_root.after(0, lambda: update_progress(i, total, package, f"{package} 安装失败"))
+                error_msg = e.stderr.strip() if e.stderr else str(e)
+                error_msg = error_msg[:100] + "..." if len(error_msg) > 100 else error_msg
+                progress_root.after(0, update_progress, i, total, package, f"{package} 安装失败: {error_msg}")
                 failed_packages.append(package)
                 continue
         
         install_complete = True
         
-        if failed_packages:
-            progress_root.after(0, lambda: messagebox.showerror(
-                "安装失败", 
-                f"以下依赖安装失败：{', '.join(failed_packages)}\n请手动执行：\npip install {' '.join(failed_packages)}"
-            ))
-            progress_root.after(0, progress_root.destroy)
-            sys.exit(1)
-        
-        # 安装后再次检查
-        check_again = True
+        # 安装完成后检查
+        still_missing = []
         for lib in required:
             try: 
                 __import__(lib)
             except ImportError:
-                progress_root.after(0, lambda: messagebox.showerror(
-                    "严重错误", 
-                    f"{lib} 仍缺失，请手动安装！"
-                ))
-                progress_root.after(0, progress_root.destroy)
-                sys.exit(1)
+                still_missing.append(lib)
         
-        progress_root.after(0, lambda: messagebox.showinfo("安装成功", "所有依赖已安装！"))
-        progress_root.after(0, progress_root.destroy)
+        if failed_packages or still_missing:
+            # 组合错误信息
+            error_msg = ""
+            if failed_packages:
+                error_msg += f"以下依赖安装失败：{', '.join(failed_packages)}\n"
+            if still_missing:
+                error_msg += f"以下依赖仍缺失：{', '.join(still_missing)}\n"
+            error_msg += f"请手动执行：\npip install {' '.join(missing)}"
+            
+            progress_root.after(0, lambda: messagebox.showerror("安装失败", error_msg))
+            progress_root.after(100, progress_root.destroy)
+            sys.exit(1)
     
     # 启动安装线程
     Thread(target=install_dependencies, daemon=True).start()
-    progress_root.mainloop()
     
-    # 确保所有依赖确实已安装
-    if check_again:
-        for lib in required:
-            try: __import__(lib)
-            except ImportError:
-                show_message("严重错误", f"{lib} 仍缺失，请手动安装！", True)
-                sys.exit(1)
+    # 主循环
+    progress_root.mainloop()
 
-check_dependencies()  # 前置执行依赖检查
+# 前置执行依赖检查
+check_dependencies()
+
 try:
     import time
     import json
@@ -174,12 +167,14 @@ try:
     from threading import Lock
     from PIL import Image, ImageDraw
     from pystray import Icon, MenuItem
-except:
-    show_message("缺少依赖", "无法自动安装依赖，请尝试手动安装依赖")
+except ImportError as e:
+    show_message("缺少依赖", f"无法导入必要模块: {str(e)}\n请尝试手动安装依赖", True)
+    sys.exit(1)
 # ================= 全局配置 =================
 PROCESS_CONFIG = {
     "rtcRemoteDesktop.exe": ["ctrl+windows+d", "ctrl+windows+f4"],
-    "screenCapture.exe": ["ctrl+windows+d", "ctrl+windows+f4"]
+    "screenCapture.exe": ["ctrl+windows+d", "ctrl+windows+f4"],
+    "notepad.exe": ["ctrl+windows+d", "ctrl+windows+f4"]
 }
 DEFAULT_CHECK_INTERVAL = 0.25  # 默认监测间隔(秒)
 SETTINGS_DIR = os.path.join(os.getenv('LOCALAPPDATA'), 'GlobalProcessWatcher')
@@ -191,101 +186,10 @@ DEFAULT_SETTINGS = {
     "enable_hotkey": False,
     "enable_sleep": False,
     "check_interval": DEFAULT_CHECK_INTERVAL,
-    "alert_duration": 1  # 默认弹窗显示1秒
+    "alert_duration": 3  # 默认弹窗显示5秒
 }
 
 settings_lock = Lock()
-
-# ================= 免责声明 =================
-def show_disclaimer():
-    """显示免责声明并获取用户同意"""
-    disclaimer_file = os.path.join(SETTINGS_DIR, 'disclaimer_accepted')
-    
-    # 如果已经同意过，直接返回
-    if os.path.exists(disclaimer_file):
-        return True
-    
-    disclaimer_text = """
-    免责声明&用户协议
-
-    本程序为开源技术研究工具，开发者不承担用户使用、传播本程序引发的任何直接或间接责任。使用本程序即视为同意以下条款：
-
-    一、责任豁免
-    1. 您将独自承担使用本程序的所有风险及后果
-    2. 开发者不对程序的完整性、准确性、适用性作任何担保
-    3. 因程序漏洞、数据丢失导致的损失，开发者不承担责任
-    4. 开发者保留随时修改、终止服务的权利，无需提前通知
-
-    二、使用限制
-    1. 禁止用于非法监控、商业间谍等侵犯隐私行为
-    2. 不得违反《网络安全法》《个人信息保护法》等法律法规
-    3. 禁止通过本程序干扰、破坏他人计算机系统
-    4. 不得将本程序用于任何网络攻击行为
-
-    三、知识产权
-    1. 程序涉及的第三方库版权归属原开发者
-    2. 未经许可不得将本程序用于商业用途
-
-    四、法律管辖
-    1. 本声明适用中华人民共和国法律解释
-    2. 争议应提交开发者所在地有管辖权的法院解决
-
-    五、用户承诺
-    1. 已充分理解使用本程序可能存在的法律风险
-    2. 保证使用行为符合所在国家/地区的法律法规
-    3. 若将本程序用于他人设备，已获得合法授权
-
-    继续使用表示您同意承担所有相关责任 请确认您已理解并同意上述条款
-    如果您不同意上述条款，请点击"拒绝"按钮退出程序。
-    """
-    
-    root = Tk()
-    root.title("免责声明&用户协议")
-    root.geometry("800x650")
-    root.resizable(False, False)
-    
-    # 计算居中位置
-    screen_width = root.winfo_screenwidth()
-    screen_height = root.winfo_screenheight()
-    x = (screen_width - 800) // 2
-    y = (screen_height - 650) // 2
-    root.geometry(f"+{x}+{y}")
-    
-    # 创建文本区域
-    text = ttk.Label(root, text=disclaimer_text, justify="left", padding=10)
-    text.pack(fill="both", expand=True)
-    
-    # 创建按钮框架
-    button_frame = ttk.Frame(root)
-    button_frame.pack(pady=10)
-    
-    accepted = False
-    
-    def on_accept():
-        nonlocal accepted
-        accepted = True
-        try:
-            with open(disclaimer_file, 'w') as f:
-                f.write("1")  # 创建标记文件
-        except Exception as e:
-            show_message("错误", f"无法保存同意状态: {str(e)}", True)
-        root.destroy()
-    
-    def on_reject():
-        root.destroy()
-    
-    # 创建按钮
-    accept_btn = ttk.Button(button_frame, text="同意并继续", command=on_accept)
-    accept_btn.pack(side="left", padx=10)
-    
-    reject_btn = ttk.Button(button_frame, text="拒绝并退出", command=on_reject)
-    reject_btn.pack(side="right", padx=10)
-    
-    # 绑定窗口关闭事件
-    root.protocol("WM_DELETE_WINDOW", on_reject)
-    
-    root.mainloop()
-    return accepted
 
 # ================= 系统控制API =================
 def system_sleep():
@@ -307,13 +211,14 @@ def is_admin():
 def request_admin():
     if os.name == 'nt' and not is_admin():
         try:
+            # 重新以管理员权限运行程序
             ctypes.windll.shell32.ShellExecuteW(
                 None, "runas", sys.executable, f'"{sys.argv[0]}"', None, 1
             )
-            sys.exit(0)
+            return True
         except Exception as e:
             show_message("权限错误", f"权限请求失败：{str(e)}", True)
-            sys.exit(1)
+    return False
 
 # ================= 注册表操作 =================
 def get_registry_auto_start():
@@ -398,7 +303,10 @@ class GlobalProcessWatcher:
         }
         self.process_states = {p: False for p in PROCESS_CONFIG}
         self.sleep_triggered = False
-        self.last_update_time = 0
+        self.last_update_time = 0 # 添加进程ID缓存
+        self.process_cache = {p: set() for p in PROCESS_CONFIG}  # {进程名: 进程ID集合}# 添加图标缓存
+        self.icon_cache = {}
+        self.last_icon_state = None
         
         self._initialize_components()
         
@@ -447,6 +355,7 @@ class GlobalProcessWatcher:
             show_message("初始化失败", f"无法创建托盘图标: {str(e)}", True)
             sys.exit(1)
 
+
     def _create_menu(self):
         """创建托盘菜单"""
         menu_items = [
@@ -457,9 +366,19 @@ class GlobalProcessWatcher:
             MenuItem(lambda _: f"💤 睡眠功能：{'✔' if self.global_settings['enable_sleep'] else '❌'}", self.toggle_sleep),
             MenuItem("✏️ 更多设置", self.show_settings_dialog),
             MenuItem("📊 当前状态", self.show_status),
+            MenuItem("🌐 项目地址", self.open_project_url),
             MenuItem("⛔ 退出程序", self.clean_exit)
         ]
         return menu_items
+    
+    
+    def open_project_url(self, _=None):
+        """打开项目GitHub地址"""
+        import webbrowser
+        try:
+            webbrowser.open("https://github.com/cmd-png/SeewoScreenPeepingDetector")
+        except Exception as e:
+            show_message("打开失败", f"无法打开项目地址: {str(e)}", True)
 
     def show_settings_dialog(self, _=None):
         """显示设置对话框"""
@@ -563,7 +482,20 @@ class GlobalProcessWatcher:
             messagebox.showerror("错误", "请输入有效的数字")
 
     def _generate_icon(self):
-        """生成托盘图标"""
+        """生成托盘图标（带缓存）"""
+        # 生成状态标识
+        current_state = (
+            self.global_settings['show_alert'],
+            self.global_settings['enable_hotkey'],
+            self.global_settings['alert_on_top'],
+            self.global_settings['enable_sleep'],
+            self._get_center_status_color()  # 中心状态颜色
+        )
+        
+        # 如果状态未变化且缓存存在，直接返回缓存
+        if current_state == self.last_icon_state and current_state in self.icon_cache:
+            return self.icon_cache[current_state]
+            
         try:
             img = Image.new('RGB', (64, 64), (40, 40, 40))
             draw = ImageDraw.Draw(img)
@@ -574,9 +506,12 @@ class GlobalProcessWatcher:
             # 绘制中心状态
             self._draw_center_status(draw)
             
+            # 更新缓存
+            self.icon_cache[current_state] = img
+            self.last_icon_state = current_state
             return img
         except Exception as e:
-            print(f"生成图标失败: {str(e)}")
+            show_message(f"生成图标失败: {str(e)}")
             return Image.new('RGB', (64, 64), (255, 0, 0))
 
     def _draw_status_rings(self, draw):
@@ -665,31 +600,77 @@ class GlobalProcessWatcher:
             self.root.after(100, self._keep_alive)
 
     def _monitoring_loop(self):
-        """主监控循环"""
+        """优化后的监控循环"""
+        self.last_process_states = self.process_states.copy()
+        
         while self.running:
             try:
-                current_time = time.time()
-                if current_time - self.last_update_time >= self.global_settings["check_interval"]:
-                    self.last_update_time = current_time
-                    self._check_processes()
+                # 使用事件等待代替固定sleep
+                time.sleep(self.global_settings["check_interval"])
+                self._check_processes()
             except Exception as e:
                 show_message(f"监控循环错误: {str(e)}")
             finally:
                 time.sleep(0.02)  #减少CPU占用
 
     def _check_processes(self):
-        """检查进程状态"""
-        current_states = {p: self._is_process_running(p) for p in PROCESS_CONFIG}
-        any_running = any(current_states.values())
+        """优化后的进程检查方法"""
+        # 使用缓存检查进程状态
+        current_states = {}
+        any_running = False
         
+        # 获取所有进程列表（减少调用次数）
+        all_processes = list(psutil.process_iter(['pid', 'name']))
+        
+        for proc_name in PROCESS_CONFIG:
+            # 首先检查缓存中的进程是否还存在
+            running = False
+            invalid_pids = set()
+            
+            for pid in self.process_cache[proc_name]:
+                try:
+                    p = psutil.Process(pid)
+                    if p.name().lower() == proc_name.lower() and p.is_running():
+                        running = True
+                    else:
+                        invalid_pids.add(pid)
+                except (psutil.NoSuchProcess, psutil.AccessDenied):
+                    invalid_pids.add(pid)
+            
+            # 移除无效的PID
+            self.process_cache[proc_name] -= invalid_pids
+            
+            # 如果缓存中没有运行中的进程，扫描新进程
+            if not running:
+                for p in all_processes:
+                    try:
+                        if p.info['name'].lower() == proc_name.lower():
+                            self.process_cache[proc_name].add(p.info['pid'])
+                            running = True
+                            break
+                    except (psutil.NoSuchProcess, psutil.AccessDenied):
+                        continue
+                    except Exception:
+                        continue
+            
+            current_states[proc_name] = running
+            if running:
+                any_running = True
+        
+        # 处理状态变化
+        for proc_name, running in current_states.items():
+            if running != self.process_states[proc_name]:
+                self._handle_state_change(proc_name, running)
+                self.process_states[proc_name] = running
+        
+        # 处理睡眠功能
         self._handle_sleep_function(any_running)
         
-        for proc in PROCESS_CONFIG:
-            if current_states[proc] != self.process_states[proc]:
-                self._handle_state_change(proc, current_states[proc])
-                self.process_states[proc] = current_states[proc]
+        # 仅在状态变化时更新托盘
+        if any(self.process_states.values()) != any(self.last_process_states.values()):
+            self._update_tray()
         
-        self._update_tray()
+        self.last_process_states = self.process_states.copy()
 
     def _handle_sleep_function(self, any_running):
         """睡眠功能逻辑"""
@@ -786,13 +767,19 @@ class GlobalProcessWatcher:
     def toggle_auto_start(self, _=None):
         """切换开机自启设置"""
         try:
+            # 尝试修改注册表
             set_registry_auto_start(not self.auto_start)
             self.auto_start = not self.auto_start
             self.save_current_settings()
             self._update_tray()
-            show_message("设置成功", f"开机自启已{'启用' if self.auto_start else '禁用'}！")
         except Exception as e:
-            show_message("设置失败", f"操作失败: {str(e)}\n请以管理员权限运行！", True)
+            # 如果权限不足，请求管理员权限
+            if "拒绝访问" in str(e) or "access denied" in str(e).lower():
+                if request_admin():
+                    # 管理员权限请求成功，退出当前实例
+                    self.clean_exit()
+            else:
+                show_message("设置失败", f"操作失败: {str(e)}", True)
 
     def toggle_alert(self, _=None):
         """切换弹窗提醒设置"""
@@ -855,20 +842,8 @@ class GlobalProcessWatcher:
         finally:
             os._exit(0)
 
-# ================= 主程序入口 =================
 if __name__ == "__main__":
     try:
-        # 确保配置目录存在
-        ensure_settings_dir()
-        
-        # 显示免责声明
-        if not show_disclaimer():
-            sys.exit(0)
-            
-        if os.name == 'nt' and not is_admin():
-            request_admin()
-            sys.exit(0)
-            
         # 确保只有一个实例运行
         if platform.system() == 'Windows':
             mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "GlobalProcessWatcherMutex")
