@@ -1,7 +1,6 @@
 # 希沃窥屏检测器
 众所周知，希沃管家可以让老师偷看你在干什么，为了防止摸鱼被老师发现的悲剧，我、[Bedrock510K](https://github.com/Bedrock510K)和DeepSeek完成了这个程序。在我们之前，已经有由[DengHanxu](https://github.com/DengHanxu)大佬开发出的[SeewoMonitorSystem](https://github.com/DengHanxu/SeewoMonitorSystem)。不过该项目已经略微过时，所以我们才开发了这个项目   ~~明明是直接开写没查搜索引擎做出来的轮子~~\
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/cmd-png/SeewoScreenPeepingDetector/total)
-
 # 免责声明&用户协议
 本程序为开源技术研究工具，***开发者不承担用户使用、传播本程序引发的任何直接或间接责任。***
 使用本程序即视为同意以下条款：
