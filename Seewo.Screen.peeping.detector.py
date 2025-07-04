@@ -173,10 +173,9 @@ except ImportError as e:
 # ================= 全局配置 =================
 PROCESS_CONFIG = {
     "rtcRemoteDesktop.exe": ["ctrl+windows+d", "ctrl+windows+f4"],
-    "screenCapture.exe": ["ctrl+windows+d", "ctrl+windows+f4"],
-    "notepad.exe": ["ctrl+windows+d", "ctrl+windows+f4"]
+    "screenCapture.exe": ["ctrl+windows+d", "ctrl+windows+f4"]
 }
-DEFAULT_CHECK_INTERVAL = 0.25  # 默认监测间隔(秒)
+DEFAULT_CHECK_INTERVAL = 0.05  # 默认监测间隔(秒)
 SETTINGS_DIR = os.path.join(os.getenv('LOCALAPPDATA'), 'GlobalProcessWatcher')
 SETTINGS_FILE = os.path.join(SETTINGS_DIR, 'settings.json')
 DEFAULT_SETTINGS = {
@@ -186,10 +185,103 @@ DEFAULT_SETTINGS = {
     "enable_hotkey": False,
     "enable_sleep": False,
     "check_interval": DEFAULT_CHECK_INTERVAL,
-    "alert_duration": 3  # 默认弹窗显示5秒
+    "alert_duration": 1  # 默认弹窗显示1秒
 }
 
 settings_lock = Lock()
+
+# ================= 免责声明 =================
+def show_disclaimer():
+    """显示免责声明并获取用户同意"""
+    disclaimer_file = os.path.join(SETTINGS_DIR, 'disclaimer_accepted')
+    
+    # 如果已经同意过，直接返回
+    if os.path.exists(disclaimer_file):
+        return True
+    
+    disclaimer_text = """
+    免责声明&用户协议
+
+    本程序为开源技术研究工具，开发者不承担用户使用、传播本程序引发的任何直接或间接责任。使用本程序即视为同意以下条款：
+
+    一、责任豁免
+    1. 您将独自承担使用本程序的所有风险及后果
+    2. 开发者不对程序的完整性、准确性、适用性作任何担保
+    3. 因程序漏洞、数据丢失导致的损失，开发者不承担责任
+    4. 开发者保留随时修改、终止服务的权利，无需提前通知
+
+    二、使用限制
+    1. 禁止用于非法监控、商业间谍等侵犯隐私行为
+    2. 不得违反《网络安全法》《个人信息保护法》等法律法规
+    3. 禁止通过本程序干扰、破坏他人计算机系统
+    4. 不得将本程序用于任何网络攻击行为
+
+    三、知识产权
+    1. 程序涉及的第三方库版权归属原开发者
+    2. 未经许可不得将本程序用于商业用途
+
+    四、法律管辖
+    1. 本声明适用中华人民共和国法律解释
+    2. 争议应提交开发者所在地有管辖权的法院解决
+
+    五、用户承诺
+    1. 已充分理解使用本程序可能存在的法律风险
+    2. 保证使用行为符合所在国家/地区的法律法规
+    3. 若将本程序用于他人设备，已获得合法授权
+
+    继续使用表示您同意承担所有相关责任 请确认您已理解并同意上述条款
+    如果您不同意上述条款，请点击"拒绝"按钮退出程序。
+    """
+    
+    root = Tk()
+    root.title("免责声明&用户协议")
+    root.geometry("800x650")
+    root.resizable(False, False)
+    
+    # 计算居中位置
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    x = (screen_width - 800) // 2
+    y = (screen_height - 650) // 2
+    root.geometry(f"+{x}+{y}")
+    
+    # 创建文本区域
+    text = ttk.Label(root, text=disclaimer_text, justify="left", padding=10)
+    text.pack(fill="both", expand=True)
+    
+    # 创建按钮框架
+    button_frame = ttk.Frame(root)
+    button_frame.pack(pady=10)
+    
+    accepted = False
+    
+    def on_accept():
+        # 确保配置目录存在
+        ensure_settings_dir()
+        nonlocal accepted
+        accepted = True
+        try:
+            with open(disclaimer_file, 'w') as f:
+                f.write("1")  # 创建标记文件
+        except Exception as e:
+            show_message("错误", f"无法保存同意状态: {str(e)}", True)
+        root.destroy()
+    
+    def on_reject():
+        root.destroy()
+    
+    # 创建按钮
+    accept_btn = ttk.Button(button_frame, text="同意并继续", command=on_accept)
+    accept_btn.pack(side="left", padx=10)
+    
+    reject_btn = ttk.Button(button_frame, text="拒绝并退出", command=on_reject)
+    reject_btn.pack(side="right", padx=10)
+    
+    # 绑定窗口关闭事件
+    root.protocol("WM_DELETE_WINDOW", on_reject)
+    
+    root.mainloop()
+    return accepted
 
 # ================= 系统控制API =================
 def system_sleep():
@@ -366,11 +458,24 @@ class GlobalProcessWatcher:
             MenuItem(lambda _: f"💤 睡眠功能：{'✔' if self.global_settings['enable_sleep'] else '❌'}", self.toggle_sleep),
             MenuItem("✏️ 更多设置", self.show_settings_dialog),
             MenuItem("📊 当前状态", self.show_status),
+            MenuItem("📖 使用方法", self.show_usage),
             MenuItem("🌐 项目地址", self.open_project_url),
             MenuItem("⛔ 退出程序", self.clean_exit)
         ]
         return menu_items
     
+    def show_usage(self, _=None):
+        """显示程序使用方法"""
+        usage_text = """
+📢 弹窗提醒：在老师监视你屏幕的时候弹出提示弹窗，弹窗显示的时间可以在更多设置中修改，默认1秒。
+当提示"screenCapture.exe已启动"时，代表老师正在观察你的屏幕，同时程序创建的托盘图标中心会变成黄色。
+当提示"rtcRemoteDesktop.exe已启动"时，说明你已经被老师远程控制，此时程序的托盘图标会显示红色。
+🔝 弹窗置顶：设置"弹窗提醒"功能的弹窗是否置顶显示
+⌨️ 全局热键：当上述任意一个程序启动时，自动新建桌面，程序退出时删除新建的桌面
+💤 睡眠功能：当上述任意一个程序启动时，自动使电脑进入睡眠状态
+✏️ 更多设置：你可以在这里修改程序检测的时间间隔和弹出弹窗的显示时间
+        """
+        messagebox.showinfo("使用方法", usage_text.strip())
     
     def open_project_url(self, _=None):
         """打开项目GitHub地址"""
@@ -475,9 +580,6 @@ class GlobalProcessWatcher:
             self.save_current_settings()
             
             self._close_settings_window()
-            show_message("设置成功", 
-                        f"监测间隔已设置为 {interval} 秒\n"
-                        f"弹窗显示时间已设置为 {alert_duration} 秒")
         except ValueError:
             messagebox.showerror("错误", "请输入有效的数字")
 
@@ -717,7 +819,7 @@ class GlobalProcessWatcher:
         alert_window.resizable(False, False)
         self._center_window(alert_window)
         
-        message = f"{process_name} 已 {'启动' if new_state else '终止'}！"
+        message = f"{process_name} 已{'启动' if new_state else '终止'}！"
         ttk.Label(alert_window, text=message).pack(pady=20)
         
         duration = self.global_settings["alert_duration"] * 1000
@@ -818,12 +920,13 @@ class GlobalProcessWatcher:
                 f"💤 睡眠功能：{'✔ 启用' if self.global_settings['enable_sleep'] else '❌ 禁用'}",
                 f"⏱️ 监测间隔：{self.global_settings['check_interval']} 秒",
                 f"🕒 弹窗显示时间：{self.global_settings['alert_duration']} 秒",
+                "V1.0.1"
                 "",
                 "进程状态："
             ]
             
             for proc, state in self.process_states.items():
-                status_lines.append(f"• {proc}: {'🟢 运行中' if state else '🔴 已停止'}")
+                status_lines.append(f"• {proc}: {'🔴运行中' if state else '🟢已停止'}")
                 
             messagebox.showinfo("系统状态", "\n".join(status_lines))
         except Exception as e:
@@ -844,6 +947,10 @@ class GlobalProcessWatcher:
 
 if __name__ == "__main__":
     try:
+        # 显示免责声明
+        if not show_disclaimer():
+            sys.exit(0)
+
         # 确保只有一个实例运行
         if platform.system() == 'Windows':
             mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "GlobalProcessWatcherMutex")
