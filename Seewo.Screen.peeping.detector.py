@@ -384,26 +384,68 @@ def save_settings(settings):
         show_message("配置错误", f"保存设置失败：{str(e)}", True)
 
 # ================= 进程操作 =================
+# ================= 进程操作 =================
 def terminate_process_by_name(process_name):
-    """根据进程名终止进程"""
+    """根据进程名使用管理员权限终止进程"""
     try:
-        killed_count = 0
-        for proc in psutil.process_iter(['pid', 'name']):
-            if proc.info['name'].lower() == process_name.lower():
-                try:
-                    proc.terminate()
-                    proc.wait(timeout=3)
-                    killed_count += 1
-                except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.TimeoutExpired):
-                    try:
-                        proc.kill()
-                        killed_count += 1
-                    except:
-                        pass
-        return killed_count > 0
+        # 直接使用提权方式结束进程
+        return _terminate_with_system_privilege(process_name)
     except Exception as e:
         show_message("进程终止错误", f"无法终止进程 {process_name}: {str(e)}", True)
         return False
+
+def _terminate_with_system_privilege(process_name):
+    """使用系统权限结束进程"""
+    try:
+        # 方法1: 使用taskkill以系统权限结束进程
+        result = subprocess.run(
+            ['taskkill', '/F', '/IM', process_name, '/T'],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        
+        if result.returncode == 0 or "成功" in result.stdout:
+            return True
+        
+        # 方法2: 如果taskkill失败，使用PowerShell以管理员权限结束
+        return _terminate_with_powershell_admin(process_name)
+    except Exception:
+        return False
+
+def _terminate_with_powershell_admin(process_name):
+    """使用PowerShell以管理员权限结束进程"""
+    try:
+        # 创建PowerShell命令
+        ps_command = f'''
+        $process = Get-Process -Name "{process_name.replace('.exe', '')}" -ErrorAction SilentlyContinue
+        if ($process) {{
+            Stop-Process -Id $process.Id -Force
+            Write-Host "成功结束进程: {process_name}"
+        }} else {{
+            Write-Host "未找到进程: {process_name}"
+        }}
+        '''
+        
+        # 使用PowerShell执行
+        result = subprocess.run(
+            ['powershell', '-Command', ps_command],
+            capture_output=True,
+            text=True,
+            timeout=15
+        )
+        
+        return result.returncode == 0
+    except Exception:
+        return False
+
+def terminate_processes_direct(process_names):
+    """直接以管理员权限结束多个进程"""
+    success_count = 0
+    for proc_name in process_names:
+        if _terminate_with_system_privilege(proc_name):
+            success_count += 1
+    return success_count > 0
 
 # ================= 核心功能类 =================
 class GlobalProcessWatcher:
@@ -870,18 +912,29 @@ class GlobalProcessWatcher:
                 self.process_states[proc_name] = running
                 state_changed = True
         
-        # 处理自动结束进程逻辑
+        # 处理自动结束进程逻辑（直接使用管理员权限）
         if self.global_settings["auto_kill"]:
+            processes_to_kill = []
             for proc_name, running in current_states.items():
                 # 如果启用了"仅对远程生效"，则只检查rtcRemoteDesktop.exe
                 if self.global_settings["only_rtc_effective"] and proc_name != "rtcRemoteDesktop.exe":
                     continue
                     
                 if running:
-                    # 尝试结束进程
-                    if terminate_process_by_name(proc_name):
-                        self.process_states[proc_name] = False
-                        state_changed = True
+                    processes_to_kill.append(proc_name)
+            
+            # 如果有需要结束的进程，直接使用管理员权限结束
+            if processes_to_kill:
+                success = terminate_processes_direct(processes_to_kill)
+                
+                # 更新状态
+                for proc_name in processes_to_kill:
+                    self.process_states[proc_name] = False
+                    state_changed = True
+                
+                # 如果结束失败，显示警告
+                if not success:
+                    show_message("结束进程失败", f"无法结束进程: {', '.join(processes_to_kill)}\n请确保程序以管理员权限运行", True)
         
         # 处理媒体暂停和静音逻辑
         if self.global_settings["auto_pause"]:
