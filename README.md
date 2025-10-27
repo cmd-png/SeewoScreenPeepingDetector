@@ -1,5 +1,5 @@
 # 希沃窥屏检测器
-众所周知，希沃管家可以让老师偷看你在干什么，为了防止摸鱼被老师发现的悲剧，我、[Bedrock510K](https://github.com/Bedrock510K)和DeepSeek完成了这个程序。在我们之前，已经有由[DengHanxu](https://github.com/DengHanxu)大佬开发出的[SeewoMonitorSystem](https://github.com/DengHanxu/SeewoMonitorSystem)。不过该项目已经略微过时，所以我们才开发了这个项目   ~~明明是直接开写没查搜索引擎做出来的轮子~~\
+众所周知，希沃管家可以让老师偷看你在干什么，为了防止摸鱼被老师发现的悲剧，我、[Bedrock510K](https://github.com/Bedrock510K)和DeepSeek、通义灵码完成了这个程序。在我们之前，已经有由[DengHanxu](https://github.com/DengHanxu)大佬开发出的[SeewoMonitorSystem](https://github.com/DengHanxu/SeewoMonitorSystem)。不过该项目已经略微过时，所以我们才开发了这个项目   ~~明明是直接开写没查搜索引擎做出来的轮子~~\
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/cmd-png/SeewoScreenPeepingDetector/total)
 # 免责声明&用户协议
 本程序为开源技术研究工具，***开发者不承担用户使用、传播本程序引发的任何直接或间接责任。***
@@ -30,10 +30,11 @@
 📢 弹窗提醒：在老师监视你屏幕的时候弹出提示弹窗，弹窗显示的时间可以在更多设置中修改，默认1秒。
 当提示"screenCapture.exe已启动"时，代表老师可能正在观察你的屏幕，同时程序创建的托盘图标中心会变成黄色。
 当提示"rtcRemoteDesktop.exe已启动"时，说明你已经被老师远程控制，此时程序的托盘图标会显示红色。
+（1.1.2版本后与“结束进程”功能互斥）
 ⌨️ 全局热键：当上述任意一个程序启动时，自动新建桌面，程序退出时删除新建的桌面
 💤 睡眠功能：当上述任意一个程序启动时，自动使电脑进入睡眠状态
 ⏸️ 自动暂停：当上述任意一个程序启动时自动暂停正在播放的音/视频
-🔴 结束进程：当上述任意一个程序启动时自动结束该进程
+🔴 结束进程：当上述任意一个程序启动时自动结束该进程（1.1.2版本后与“弹窗提醒”功能互斥）
 ⚠️ 警告：使用此功能可能导致被管理员线下真实!作者不对因使用本软件带来的任何后果及连带后果负责！
 
 ✏️ 更多设置：你可以在这里修改程序的其他设置
@@ -59,4 +60,4 @@
         上述功能都开启：
         上半环紫色(自动暂停)\
         下半环橙色(睡眠功能)
-# 注意：此项目99%的代码都由DeepSeek生成
+
