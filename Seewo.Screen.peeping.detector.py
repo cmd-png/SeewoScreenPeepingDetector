@@ -10,19 +10,6 @@ import ctypes
 from threading import Thread, Lock
 from tkinter import Tk, messagebox, ttk, Toplevel, StringVar, BooleanVar
 
-try:
-    import keyboard
-    import psutil
-    from win32 import win32api
-    from PIL import Image, ImageDraw
-    from pystray import Icon, MenuItem
-except ImportError as e:
-    root = Tk()
-    root.withdraw()
-    messagebox.showerror("缺少依赖", f"无法导入必要模块: {str(e)}\n请尝试手动安装依赖")
-    root.destroy()
-    sys.exit(1)
-
 # ================= 前置依赖检查 =================
 def show_message(title, message, is_error=False):
     """通用弹窗函数"""
@@ -141,6 +128,18 @@ def check_dependencies():
     progress_root.mainloop()
 
 check_dependencies()
+try:
+    import keyboard
+    import psutil
+    from win32 import win32api
+    from PIL import Image, ImageDraw
+    from pystray import Icon, MenuItem
+except ImportError as e:
+    root = Tk()
+    root.withdraw()
+    messagebox.showerror("缺少依赖", f"无法导入必要模块: {str(e)}\n请尝试手动安装依赖")
+    root.destroy()
+    sys.exit(1)
 
 # ================= 全局配置 =================
 PROCESS_CONFIG = {
@@ -1019,7 +1018,7 @@ class GlobalProcessWatcher:
                 f"🎯 仅对rtcRemoteDesktop.exe生效：{'✔ 启用' if self.global_settings['only_rtc_effective'] else '❌ 禁用'}",
                 f"⏱️ 监测间隔：{self.global_settings['check_interval']} 秒",
                 f"🕒 弹窗显示时间：{self.global_settings['alert_duration']} 秒",
-                "V1.1.2",
+                "V1.1.3",
                 "",
                 "进程状态："
             ]
