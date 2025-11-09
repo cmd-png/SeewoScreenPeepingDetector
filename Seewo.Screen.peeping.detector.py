@@ -408,6 +408,17 @@ class GlobalProcessWatcher:
         self.start_monitoring()
         self.save_current_settings()
         
+        # 如果启用了自动结束进程功能，检查当前是否已有目标进程在运行
+        if self.global_settings["auto_kill"]:
+            for proc_name in PROCESS_CONFIG:
+                if self._is_process_running(proc_name):
+                    # 如果启用了"仅对远程生效"，则只处理rtcRemoteDesktop.exe
+                    if not self.global_settings["only_rtc_effective"] or proc_name == "rtcRemoteDesktop.exe":
+                        success = terminate_processes_direct([proc_name])
+                        # 如果结束失败，显示警告
+                        if not success:
+                            show_message("结束进程失败", f"无法结束进程: {proc_name}\n请确保程序以管理员权限运行", True)
+        
         if self.global_settings["auto_pause"]:
             for proc_name in PROCESS_CONFIG:
                 if self._is_process_running(proc_name):
@@ -993,7 +1004,20 @@ class GlobalProcessWatcher:
             self.global_settings["show_alert"] = False
             show_message("功能冲突", "检测到\"弹窗提醒\"功能已启用，已自动关闭该功能。\n弹窗提醒和结束进程功能不能同时启用，否则会遭到消息轰炸")
         
+        # 切换自动结束进程设置
         self.global_settings["auto_kill"] = not self.global_settings["auto_kill"]
+        
+        # 如果刚刚启用了自动结束进程功能，检查当前是否已有目标进程在运行
+        if self.global_settings["auto_kill"]:
+            for proc_name in PROCESS_CONFIG:
+                if self._is_process_running(proc_name):
+                    # 如果启用了"仅对远程生效"，则只处理rtcRemoteDesktop.exe
+                    if not self.global_settings["only_rtc_effective"] or proc_name == "rtcRemoteDesktop.exe":
+                        success = terminate_processes_direct([proc_name])
+                        # 如果结束失败，显示警告
+                        if not success:
+                            show_message("结束进程失败", f"无法结束进程: {proc_name}\n请确保程序以管理员权限运行", True)
+        
         self.save_current_settings()
         self._update_tray()
     
