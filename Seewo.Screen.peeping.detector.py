@@ -63,8 +63,8 @@ def check_dependencies():
     def update_progress(current, total, package, message):
         """更新进度显示"""
         progress_bar['value'] = (current / total) * 100
-        progress_label.config(text=f"进度：{current}/{total}")
-        current_pkg_label.config(text=f"正在安装：{package}")
+        progress_label.config(text=f"进度: {current}/{total}")
+        current_pkg_label.config(text=f"正在安装: {package}")
         detail_label.config(text=message)
         progress_root.update_idletasks()
 
@@ -104,7 +104,7 @@ def check_dependencies():
             except subprocess.CalledProcessError as e:
                 error_msg = e.stderr.strip() if e.stderr else str(e)
                 error_msg = error_msg[:100] + "..." if len(error_msg) > 100 else error_msg
-                progress_root.after(0, update_progress, i, total, package, f"{package} 安装失败：{error_msg}")
+                progress_root.after(0, update_progress, i, total, package, f"{package} 安装失败: {error_msg}")
                 failed_packages.append(package)
                 continue
         install_complete = True
@@ -137,7 +137,7 @@ try:
 except ImportError as e:
     root = Tk()
     root.withdraw()
-    messagebox.showerror("缺少依赖", f"无法导入必要模块：{str(e)}\n请尝试手动安装依赖")
+    messagebox.showerror("缺少依赖", f"无法导入必要模块: {str(e)}\n请尝试手动安装依赖")
     root.destroy()
     sys.exit(1)
 
@@ -232,7 +232,7 @@ def show_disclaimer():
             with open(disclaimer_file, 'w') as f:
                 f.write("1")
         except Exception as e:
-            show_message("错误", f"无法保存同意状态：{str(e)}", True)
+            show_message("错误", f"无法保存同意状态: {str(e)}", True)
         root.destroy()
 
     def on_reject():
@@ -245,7 +245,7 @@ def show_disclaimer():
     root.mainloop()
     return accepted
 
-# ================= 系统控制 API =================
+# ================= 系统控制API =================
 def system_sleep():
     """使系统进入睡眠状态"""
     if platform.system() == 'Windows':
@@ -255,7 +255,7 @@ def system_sleep():
         except Exception as e:
             show_message("睡眠失败", f"无法进入睡眠状态：{str(e)}", True)
     else:
-        show_message("不支持", "该功能仅支持 Windows 系统", True)
+        show_message("不支持", "该功能仅支持Windows系统", True)
 
 # ================= 注册表操作 =================
 def get_registry_auto_start():
@@ -322,7 +322,7 @@ def load_settings():
                         try:
                             os.remove(backup_file)
                         except Exception:
-                            pass     
+                            pass
             except Exception as e:
                 if os.path.exists(temp_file):
                     try:
@@ -341,7 +341,7 @@ def terminate_processes_direct(process_names):
     success_count = 0
     for proc_name in process_names:
         try:
-            # 使用 CREATE_NO_WINDOW 标志隐藏窗口
+            # 使用CREATE_NO_WINDOW标志隐藏窗口
             result = subprocess.run(
                 ['taskkill', '/F', '/IM', proc_name, '/T'],
                 capture_output=True,
@@ -356,12 +356,12 @@ def terminate_processes_direct(process_names):
                 $process = Get-Process -Name "{proc_name.replace('.exe', '')}" -ErrorAction SilentlyContinue
                 if ($process) {{
                     Stop-Process -Id $process.Id -Force
-                    Write-Host "成功结束进程：{proc_name}"
+                    Write-Host "成功结束进程: {proc_name}"
                 }} else {{
-                    Write-Host "未找到进程：{proc_name}"
+                    Write-Host "未找到进程: {proc_name}"
                 }}
                 '''
-                # PowerShell 命令也使用 CREATE_NO_WINDOW 标志隐藏窗口
+                # PowerShell命令也使用CREATE_NO_WINDOW标志隐藏窗口
                 result = subprocess.run(
                     ['powershell', '-Command', ps_command],
                     capture_output=True,
@@ -399,7 +399,7 @@ class GlobalProcessWatcher:
         self.process_cache = {p: set() for p in PROCESS_CONFIG}
         self.icon_cache = {}
         self.last_icon_state = None
-        
+
         self.sync_registry_state()
         self._hide_console()
         self.root = Tk()
@@ -407,18 +407,7 @@ class GlobalProcessWatcher:
         self._init_tray_icon()
         self.start_monitoring()
         self.save_current_settings()
-        
-        # 如果启用了自动结束进程功能，检查当前是否已有目标进程在运行
-        if self.global_settings["auto_kill"]:
-            for proc_name in PROCESS_CONFIG:
-                if self._is_process_running(proc_name):
-                    # 如果启用了"仅对远程生效"，则只处理 rtcRemoteDesktop.exe
-                    if not self.global_settings["only_rtc_effective"] or proc_name == "rtcRemoteDesktop.exe":
-                        success = terminate_processes_direct([proc_name])
-                        # 如果结束失败，显示警告
-                        if not success:
-                            show_message("结束进程失败", f"无法结束进程：{proc_name}\n请确保程序以管理员权限运行", True)
-        
+
         if self.global_settings["auto_pause"]:
             for proc_name in PROCESS_CONFIG:
                 if self._is_process_running(proc_name):
@@ -432,7 +421,7 @@ class GlobalProcessWatcher:
             if get_registry_auto_start() != self.auto_start:
                 set_registry_auto_start(self.auto_start)
         except Exception as e:
-            show_message("注册表错误", f"无法同步注册表状态：{str(e)}", True)
+            show_message("注册表错误", f"无法同步注册表状态: {str(e)}", True)
 
     def _hide_console(self):
         """隐藏控制台窗口"""
@@ -454,7 +443,7 @@ class GlobalProcessWatcher:
             )
             threading.Thread(target=self.tray_icon.run, daemon=True).start()
         except Exception as e:
-            show_message("初始化失败", f"无法创建托盘图标：{str(e)}", True)
+            show_message("初始化失败", f"无法创建托盘图标: {str(e)}", True)
             sys.exit(1)
 
     def _create_menu(self):
@@ -477,47 +466,46 @@ class GlobalProcessWatcher:
     def show_usage(self, _=None):
         """显示程序使用方法"""
         usage_text = """
-📢 弹窗提醒：在老师监视你屏幕的时候弹出提示弹窗，弹窗显示的时间可以在更多设置中修改，默认 1 秒。
-当提示"screenCapture.exe 已启动"时，代表老师可能正在观察你的屏幕，同时程序创建的托盘图标中心会变成黄色。
-当提示"rtcRemoteDesktop.exe 已启动"时，说明你已经被老师远程控制，此时程序的托盘图标会显示红色。
+📢 弹窗提醒：在老师监视你屏幕的时候弹出提示弹窗，弹窗显示的时间可以在更多设置中修改，默认1秒。
+当提示"screenCapture.exe已启动"时，代表老师可能正在观察你的屏幕，同时程序创建的托盘图标中心会变成黄色。
+当提示"rtcRemoteDesktop.exe已启动"时，说明你已经被老师远程控制，此时程序的托盘图标会显示红色。
 ⌨️ 全局热键：当上述任意一个程序启动时，自动新建桌面，程序退出时删除新建的桌面
 💤 睡眠功能：当上述任意一个程序启动时，自动使电脑进入睡眠状态
 ⏸️ 自动暂停：当上述任意一个程序启动时自动暂停正在播放的音/视频
 🔴 结束进程：当上述任意一个程序启动时自动结束该进程
-⚠️ 警告：使用此功能可能导致被管理员线下真实！作者不对因使用本软件带来的任何后果及连带后果负责！
+⚠️ 警告：使用此功能可能导致被管理员线下真实!作者不对因使用本软件带来的任何后果及连带后果负责！
 
 ✏️ 更多设置：你可以在这里修改程序的其他设置
 ⏱️ 监测间隔：控制程序的扫描间隔，值越小检测越灵敏，性能要求越高
-🕒 弹窗显示时间：控制"弹窗提醒"功能的弹窗显示的时长
+🕒 弹窗显示时间：控制"弹窗提醒"功能弹出的提醒弹窗显示的时长
 🔝 弹窗置顶：设置"弹窗提醒"功能的弹窗是否置顶显示
-🎯 仅对 rtcRemoteDesktop.exe 生效：选中时，除了弹窗提醒和弹窗置顶以外的功能将只在"rtcRemoteDesktop.exe"运行时才触发
+🎯 仅对rtcRemoteDesktop.exe生效：选中时，除了弹窗提醒和弹窗置顶以外的功能将只在"rtcRemoteDesktop.exe"运行时才触发
 ⚠️ 注意：使用此功能前请注意观察学校的行动方式，确认学校在观察你屏幕的时候会启用远程桌面（rtcRemoteDesktop.exe）再打开此功能
-若经常先提示"screenCapture.exe 已启动"后提示"rtcRemoteDesktop.exe 已启动"则大概率学校在观察你屏幕的时候会启用远程桌面
+若经常先提示"screenCapture.exe已启动"后提示"rtcRemoteDesktop.exe已启动"则大概率学校在观察你屏幕的时候会启用远程桌面
 
 图标颜色说明：
-中心圆点：
-        绿色 - 无目标进程运行
-        黄色 - screenCapture.exe 正在运行（老师可能正在观察你的屏幕）
-        红色 - rtcRemoteDesktop.exe 正在运行（你已经被老师远程控制）
-
-功能指示点：
-        左侧蓝色点 - 弹窗提醒功能开启
-        右侧黄色点 - 全局热键功能开启
-        上方紫色点 - 自动暂停功能开启
-        下方橙色点 - 睡眠功能开启
-
-当没有任何功能开启时，左侧会显示一个灰色默认点。
-当 auto_kill（自动结束进程）功能开启时，图标外围会显示红色边框。
+外环：
+        只有弹窗提醒开启 - 全环亮蓝色
+        只有全局热键开启 - 全环黄色
+        上述功能都开启：
+        下半环蓝色(弹窗提醒)
+        上半环黄色(全局热键)
+内环：
+        只有自动暂停开启 - 全环紫色
+        只有睡眠功能开启 - 全环橙色
+        上述功能都开启：
+        上半环紫色(自动暂停)
+        下半环橙色(睡眠功能)
         """
         messagebox.showinfo("使用方法", usage_text.strip())
 
     def open_project_url(self, _=None):
-        """打开项目 GitHub 地址"""
+        """打开项目GitHub地址"""
         import webbrowser
         try:
             webbrowser.open("https://github.com/cmd-png/SeewoScreenPeepingDetector")
         except Exception as e:
-            show_message("打开失败", f"无法打开项目地址：{str(e)}", True)
+            show_message("打开失败", f"无法打开项目地址: {str(e)}", True)
 
     def show_settings_dialog(self, _=None):
         """显示设置对话框"""
@@ -537,12 +525,12 @@ class GlobalProcessWatcher:
             y = (self.settings_window.winfo_screenheight() // 2) - (height // 2)
             self.settings_window.geometry(f'+{x}+{y}')
             self.settings_window.protocol("WM_DELETE_WINDOW", self._close_settings_window)
-            ttk.Label(self.settings_window, text="监测间隔 (0.02-10 秒):").grid(
+            ttk.Label(self.settings_window, text="监测间隔(0.02-10秒):").grid(
                 row=0, column=0, padx=10, pady=10, sticky="w")
             self.interval_var = StringVar(value=str(self.global_settings["check_interval"]))
             interval_entry = ttk.Entry(self.settings_window, textvariable=self.interval_var, width=10)
             interval_entry.grid(row=0, column=1, padx=10, pady=10, sticky="w")
-            ttk.Label(self.settings_window, text="弹窗显示时间 (1-30 秒):").grid(
+            ttk.Label(self.settings_window, text="弹窗显示时间(1-30秒):").grid(
                 row=1, column=0, padx=10, pady=10, sticky="w")
             self.alert_duration_var = StringVar(value=str(self.global_settings["alert_duration"]))
             alert_duration_entry = ttk.Entry(self.settings_window,
@@ -561,7 +549,7 @@ class GlobalProcessWatcher:
             auto_mute_cb.grid(row=3, column=0, columnspan=2, padx=10, pady=5, sticky="w")
             self.only_rtc_effective_var = BooleanVar(value=self.global_settings.get("only_rtc_effective", False))
             only_rtc_effective_cb = ttk.Checkbutton(self.settings_window,
-                                                   text="仅对 rtcRemoteDesktop.exe 生效",
+                                                   text="仅对rtcRemoteDesktop.exe生效",
                                                    variable=self.only_rtc_effective_var)
             only_rtc_effective_cb.grid(row=4, column=0, columnspan=2, padx=10, pady=5, sticky="w")
             ttk.Label(self.settings_window, text="注：请查看使用方法后再启用此功能！").grid(
@@ -575,7 +563,7 @@ class GlobalProcessWatcher:
             interval_entry.focus_set()
             self.settings_window.bind('<Return>', self._save_settings)
         except Exception as e:
-            show_message("错误", f"无法创建设置窗口：{str(e)}", True)
+            show_message("错误", f"无法创建设置窗口: {str(e)}", True)
 
     def _close_settings_window(self):
         """安全关闭设置窗口"""
@@ -592,10 +580,10 @@ class GlobalProcessWatcher:
             interval = float(self.interval_var.get())
             alert_duration = int(self.alert_duration_var.get())
             if not 0.02 <= interval <= 10:
-                messagebox.showerror("错误", "监测间隔必须在 0.02 秒到 10 秒之间")
+                messagebox.showerror("错误", "监测间隔必须在0.02秒到10秒之间")
                 return
             if not 1 <= alert_duration <= 30:
-                messagebox.showerror("错误", "弹窗显示时间必须在 1 秒到 30 秒之间")
+                messagebox.showerror("错误", "弹窗显示时间必须在1秒到30秒之间")
                 return
             self.global_settings.update({
                 "check_interval": interval,
@@ -626,7 +614,7 @@ class GlobalProcessWatcher:
         try:
             img = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
             draw = ImageDraw.Draw(img)
-            self._draw_status_indicators(draw)
+            self._draw_status_rings(draw)
             self._draw_center_status(draw)
             if self.global_settings['auto_kill']:
                 draw.rectangle([2, 2, 62, 62], outline=(255, 0, 0, 255), width=3)
@@ -639,49 +627,36 @@ class GlobalProcessWatcher:
             draw.ellipse((16, 16, 48, 48), fill=(255, 0, 0, 255))
             return error_img
 
-    def _draw_status_indicators(self, draw):
-        """绘制状态指示点 - 使用 RGBA 颜色，在中心原点周围同一半径上绘制小圆点"""
-        center_x, center_y = 32, 32  # 64x64 图像的中心
-        radius = 18  # 所有小圆点距离中心的统一半径
-        
-        # 计算小圆点位置的辅助函数
-        def get_position(angle_degrees, r):
-            import math
-            angle_rad = math.radians(angle_degrees)
-            x = center_x + r * math.cos(angle_rad)
-            y = center_y - r * math.sin(angle_rad)  # y 轴向上为正
-            return (x - 4, y - 4, x + 4, y + 4)  # 4 是小圆点半径
-        
-        # 功能指示点（同一半径，不同角度）
-        # show_alert: 左侧 (180 度) - 蓝色
-        if self.global_settings['show_alert']:
-            bbox = get_position(180, radius)
-            draw.ellipse(bbox, fill=(0, 191, 255, 255))
-        
-        # enable_hotkey: 右侧 (0 度) - 黄色
-        if self.global_settings['enable_hotkey']:
-            bbox = get_position(0, radius)
-            draw.ellipse(bbox, fill=(215, 194, 70, 255))
-        
-        # auto_pause: 上方 (90 度) - 紫色
-        if self.global_settings['auto_pause']:
-            bbox = get_position(90, radius)
-            draw.ellipse(bbox, fill=(128, 0, 255, 255))
-        
-        # enable_sleep: 下方 (270 度) - 橙色
-        if self.global_settings['enable_sleep']:
-            bbox = get_position(270, radius)
-            draw.ellipse(bbox, fill=(255, 119, 0, 255))
+    def _draw_status_rings(self, draw):
+        """绘制状态环 - 使用RGBA颜色"""
+        if self.global_settings['show_alert'] and self.global_settings['enable_hotkey']:
+            draw.arc((8, 8, 56, 56), 0, 180, (0, 191, 255, 255), 3)
+            draw.arc((8, 8, 56, 56), 180, 360, (215, 194, 70, 255), 3)
+        elif self.global_settings['show_alert']:
+            draw.arc((8, 8, 56, 56), 0, 360, (0, 191, 255, 255), 3)
+        elif self.global_settings['enable_hotkey']:
+            draw.arc((8, 8, 56, 56), 0, 360, (215, 194, 70, 255), 3)
+        else:
+            draw.arc((8, 8, 56, 56), 0, 360, (100, 100, 100, 255), 3)
+        if self.global_settings['auto_pause'] and self.global_settings['enable_sleep']:
+            draw.arc((16, 16, 48, 48), 180, 360, (128, 0, 255, 255), 3)
+            draw.arc((16, 16, 48, 48), 0, 180, (255, 119, 0, 255), 3)
+        elif self.global_settings['auto_pause']:
+            draw.arc((16, 16, 48, 48), 0, 360, (128, 0, 255, 255), 3)
+        elif self.global_settings['enable_sleep']:
+            draw.arc((16, 16, 48, 48), 0, 360, (255, 119, 0, 255), 3)
+        else:
+            draw.arc((16, 16, 48, 48), 0, 360, (100, 100, 100, 255), 3)
 
     def _draw_center_status(self, draw):
-        """绘制中心状态 - 使用 RGBA 颜色"""
+        """绘制中心状态 - 使用RGBA颜色"""
         status_color = self._get_center_status_color()
         if len(status_color) == 3:
             status_color = (*status_color, 255)
         draw.ellipse((22, 22, 42, 42), fill=status_color)
 
     def _get_center_status_color(self):
-        """获取中心状态颜色 - 返回 RGBA 颜色"""
+        """获取中心状态颜色 - 返回RGBA颜色"""
         if self.process_states.get("rtcRemoteDesktop.exe", False):
             return (255, 0, 0, 255)
         elif self.process_states.get("screenCapture.exe", False):
@@ -701,7 +676,7 @@ class GlobalProcessWatcher:
             self.monitor_thread.start()
             self.root.after(100, self._keep_alive)
         except Exception as e:
-            show_message("监控错误", f"无法启动监控线程：{str(e)}", True)
+            show_message("监控错误", f"无法启动监控线程: {str(e)}", True)
         self._update_tray()
 
     def _keep_alive(self):
@@ -716,7 +691,7 @@ class GlobalProcessWatcher:
             time.sleep(0.1)
             win32api.keybd_event(0xB3, 0, 2, 0)
         except Exception as e:
-            show_message("媒体控制", f"无法控制媒体播放状态：{str(e)}", True)
+            show_message("媒体控制", f"无法控制媒体播放状态: {str(e)}", True)
 
     def _mute_system(self):
         """使系统静音"""
@@ -725,7 +700,7 @@ class GlobalProcessWatcher:
             time.sleep(0.1)
             win32api.keybd_event(0xAD, 0, 2, 0)
         except Exception as e:
-            show_message("静音控制", f"无法控制系统音量：{str(e)}", True)
+            show_message("静音控制", f"无法控制系统音量: {str(e)}", True)
 
     def _monitoring_loop(self):
         """优化后的监控循环"""
@@ -734,7 +709,7 @@ class GlobalProcessWatcher:
                 time.sleep(self.global_settings["check_interval"])
                 self._check_processes()
             except Exception as e:
-                show_message("监控错误", f"监控循环错误：{str(e)}", True)
+                show_message("监控错误", f"监控循环错误: {str(e)}", True)
             finally:
                 time.sleep(0.02)
 
@@ -763,10 +738,10 @@ class GlobalProcessWatcher:
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
                     invalid_pids.add(pid)
 
-            # 清理无效的 PID
+            # 清理无效的PID
             self.process_cache[proc_name] -= invalid_pids
 
-            # 如果缓存中没有找到，则扫描所有进程
+            # 如果缓存中没有找到,则扫描所有进程
             if not running:
                 for p in all_processes:
                     try:
@@ -826,11 +801,11 @@ class GlobalProcessWatcher:
                         time.sleep(0.2)
                         keyboard.press_and_release('ctrl+windows+left')
                 except Exception as e:
-                    show_message("热键模拟错误", f"热键模拟错误：{str(e)}", True)
+                    show_message("热键模拟错误", f"热键模拟错误: {str(e)}", True)
 
             # 处理自动结束进程逻辑（直接使用管理员权限）
             if self.global_settings["auto_kill"] and new_state:
-                # 如果启用了"仅对远程生效"，则只检查 rtcRemoteDesktop.exe
+                # 如果启用了"仅对远程生效"，则只检查rtcRemoteDesktop.exe
                 if not self.global_settings["only_rtc_effective"] or process_name == "rtcRemoteDesktop.exe":
                     success = terminate_processes_direct([process_name])
 
@@ -839,11 +814,11 @@ class GlobalProcessWatcher:
 
                     # 如果结束失败，显示警告
                     if not success:
-                        show_message("结束进程失败", f"无法结束进程：{process_name}\n请确保程序以管理员权限运行", True)
+                        show_message("结束进程失败", f"无法结束进程: {process_name}\n请确保程序以管理员权限运行", True)
 
             # 处理媒体暂停和静音逻辑
             if self.global_settings["auto_pause"]:
-                # 如果启用了"仅对远程生效"，则只检查 rtcRemoteDesktop.exe
+                # 如果启用了"仅对远程生效"，则只检查rtcRemoteDesktop.exe
                 if self.global_settings["only_rtc_effective"]:
                     should_pause = self.process_states.get("rtcRemoteDesktop.exe", False)
                 else:
@@ -863,7 +838,7 @@ class GlobalProcessWatcher:
             self._handle_sleep_function(any_running if any_running is not None else any(self.process_states.values()))
 
         except Exception as e:
-            show_message("处理状态变化错误", f"处理状态变化错误：{str(e)}", True)
+            show_message("处理状态变化错误", f"处理状态变化错误: {str(e)}", True)
 
     def _handle_sleep_function(self, should_sleep):
         """睡眠功能逻辑"""
@@ -951,7 +926,7 @@ class GlobalProcessWatcher:
                         pass
                 show_message("配置错误", f"保存设置失败：{str(e)}", True)
         except Exception as e:
-            show_message("保存设置错误", f"保存设置错误：{str(e)}", True)
+            show_message("保存设置错误", f"保存设置错误: {str(e)}", True)
 
     def toggle_auto_start(self, _=None):
         """切换开机自启设置"""
@@ -977,7 +952,7 @@ class GlobalProcessWatcher:
                         except Exception as e2:
                             show_message("权限错误", f"权限请求失败：{str(e2)}", True)
             else:
-                show_message("设置失败", f"操作失败：{str(e)}", True)
+                show_message("设置失败", f"操作失败: {str(e)}", True)
 
     def toggle_alert(self, _=None):
         """切换弹窗提醒设置"""
@@ -1018,20 +993,7 @@ class GlobalProcessWatcher:
             self.global_settings["show_alert"] = False
             show_message("功能冲突", "检测到\"弹窗提醒\"功能已启用，已自动关闭该功能。\n弹窗提醒和结束进程功能不能同时启用，否则会遭到消息轰炸")
 
-        # 切换自动结束进程设置
         self.global_settings["auto_kill"] = not self.global_settings["auto_kill"]
-
-        # 如果刚刚启用了自动结束进程功能，检查当前是否已有目标进程在运行
-        if self.global_settings["auto_kill"]:
-            for proc_name in PROCESS_CONFIG:
-                if self._is_process_running(proc_name):
-                    # 如果启用了"仅对远程生效"，则只处理 rtcRemoteDesktop.exe
-                    if not self.global_settings["only_rtc_effective"] or proc_name == "rtcRemoteDesktop.exe":
-                        success = terminate_processes_direct([proc_name])
-                        # 如果结束失败，显示警告
-                        if not success:
-                            show_message("结束进程失败", f"无法结束进程：{proc_name}\n请确保程序以管理员权限运行", True)
-
         self.save_current_settings()
         self._update_tray()
 
@@ -1053,7 +1015,7 @@ class GlobalProcessWatcher:
                 f"💤 睡眠功能：{'✔ 启用' if self.global_settings['enable_sleep'] else '❌ 禁用'}",
                 f"⏸️ 自动暂停：{'✔ 启用' if self.global_settings['auto_pause'] else '❌ 禁用'}",
                 f"🔴 结束进程：{'✔ 启用' if self.global_settings['auto_kill'] else '❌ 禁用'}",
-                f"🎯 仅对 rtcRemoteDesktop.exe 生效：{'✔ 启用' if self.global_settings['only_rtc_effective'] else '❌ 禁用'}",
+                f"🎯 仅对rtcRemoteDesktop.exe生效：{'✔ 启用' if self.global_settings['only_rtc_effective'] else '❌ 禁用'}",
                 f"⏱️ 监测间隔：{self.global_settings['check_interval']} 秒",
                 f"🕒 弹窗显示时间：{self.global_settings['alert_duration']} 秒",
                 "V1.1.3",
@@ -1064,7 +1026,7 @@ class GlobalProcessWatcher:
                 status_lines.append(f"• {proc}: {'🔴运行中' if state else '🟢已停止'}")
             messagebox.showinfo("系统状态", "\n".join(status_lines))
         except Exception as e:
-            show_message("错误", f"无法显示状态：{str(e)}", True)
+            show_message("错误", f"无法显示状态: {str(e)}", True)
 
     def clean_exit(self, _=None):
         """安全退出程序"""
@@ -1091,5 +1053,5 @@ if __name__ == "__main__":
         app = GlobalProcessWatcher()
         app.root.mainloop()
     except Exception as e:
-        show_message("启动失败", f"初始化错误：{str(e)}", True)
+        show_message("启动失败", f"初始化错误: {str(e)}", True)
         sys.exit(1)
